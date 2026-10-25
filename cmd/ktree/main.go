@@ -37,12 +37,20 @@ func main() {
 	}
 
 	// WAL and a busy timeout let the CLI and the MCP server share the file
-	// without "database is locked" errors
+	// without "database is locked" errors.
+	// SetMaxIdleConns(0) ensures connections are closed when idle so the WAL
+	// shared-memory lock is released, allowing Google Drive to sync the file
+	// between machines.
 	db, err := sql.Open("sqlite3", config.DBPath+"?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not open database: %v\n", err)
 		os.Exit(1)
 	}
+	db.SetMaxIdleConns(0)
+	defer func() {
+		db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+		db.Close()
+	}()
 
 	err = runMigrations(db)
 	if err != nil {
