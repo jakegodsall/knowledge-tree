@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"jakegodsall/knowledge-graph/src/repository/sqlite"
+	"jakegodsall/knowledge-tree/src/repository/sqlite"
 	"os"
 	"path/filepath"
 	"strings"

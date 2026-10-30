@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"jakegodsall/knowledge-graph/src/domain"
-	"jakegodsall/knowledge-graph/src/graphml"
+	"jakegodsall/knowledge-tree/src/domain"
+	"jakegodsall/knowledge-tree/src/graphml"
 	"os"
 	"strings"
 	"time"

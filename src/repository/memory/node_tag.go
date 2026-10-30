@@ -2,7 +2,7 @@ package memory
 
 import (
 	"fmt"
-	"jakegodsall/knowledge-graph/src/domain"
+	"jakegodsall/knowledge-tree/src/domain"
 
 	"github.com/google/uuid"
 )

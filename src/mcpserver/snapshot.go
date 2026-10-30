@@ -2,8 +2,8 @@ package mcpserver
 
 import (
 	"fmt"
-	"jakegodsall/knowledge-graph/src/domain"
-	"jakegodsall/knowledge-graph/src/lookup"
+	"jakegodsall/knowledge-tree/src/domain"
+	"jakegodsall/knowledge-tree/src/lookup"
 	"strings"
 
 	"github.com/google/uuid"

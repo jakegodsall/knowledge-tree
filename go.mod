@@ -1,4 +1,4 @@
-module jakegodsall/knowledge-graph
+module jakegodsall/knowledge-tree
 
 go 1.27.1
 

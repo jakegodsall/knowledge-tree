@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"jakegodsall/knowledge-graph/src/mcpserver"
+	"jakegodsall/knowledge-tree/src/mcpserver"
 	"os"
 	"os/signal"
 	"syscall"

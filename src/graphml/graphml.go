@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"jakegodsall/knowledge-graph/src/domain"
+	"jakegodsall/knowledge-tree/src/domain"
 	"math"
 	"regexp"
 	"sort"

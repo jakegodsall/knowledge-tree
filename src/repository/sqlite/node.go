@@ -3,7 +3,7 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
-	"jakegodsall/knowledge-graph/src/domain"
+	"jakegodsall/knowledge-tree/src/domain"
 	"strings"
 	"time"
 

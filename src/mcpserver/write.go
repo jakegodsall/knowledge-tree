@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"jakegodsall/knowledge-graph/src/domain"
-	"jakegodsall/knowledge-graph/src/lookup"
+	"jakegodsall/knowledge-tree/src/domain"
+	"jakegodsall/knowledge-tree/src/lookup"
 	"math"
 	"strings"
 

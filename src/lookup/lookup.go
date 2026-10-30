@@ -4,8 +4,8 @@ package lookup
 
 import (
 	"fmt"
-	"jakegodsall/knowledge-graph/src/domain"
-	"jakegodsall/knowledge-graph/src/repository"
+	"jakegodsall/knowledge-tree/src/domain"
+	"jakegodsall/knowledge-tree/src/repository"
 	"strings"
 
 	"github.com/google/uuid"
