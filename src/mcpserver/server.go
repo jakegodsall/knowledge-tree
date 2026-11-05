@@ -65,6 +65,12 @@ func New(repos Repositories) *mcp.Server {
 		Annotations: readOnly,
 	}, h.searchNodes)
 
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "show_node",
+		Description: "Show the complete tree structure beneath a node, expanded to full depth. Use this when the user names a topic and wants to see everything underneath it.",
+		Annotations: readOnly,
+	}, h.showNode)
+
 	h.addWriteTools(server)
 
 	return server
@@ -263,6 +269,33 @@ func (h *handlers) searchNodes(ctx context.Context, req *mcp.CallToolRequest, in
 	}
 
 	return text(out.String()), nil, nil
+}
+
+type showNodeInput struct {
+	Node string `json:"node" jsonschema:"node ID or ID prefix, as shown by search_nodes or get_tree"`
+}
+
+func (h *handlers) showNode(ctx context.Context, req *mcp.CallToolRequest, in showNodeInput) (*mcp.CallToolResult, any, error) {
+	if in.Node == "" {
+		return nil, nil, fmt.Errorf("node is required")
+	}
+
+	start, err := lookup.Node(h.repos.Nodes, in.Node)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tree, err := h.repos.Trees.FindByID(start.GraphID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outline, err := h.outline(tree, start, -1)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return text(outline), nil, nil
 }
 
 func status(n *domain.Node) string {
