@@ -43,6 +43,12 @@ func (h *handlers) addWriteTools(server *mcp.Server) {
 	}, h.setStatus)
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "promote_to_tree",
+		Description: "Promote a topic and all of its descendants to their own top-level tree, removing it from its current tree. The new tree takes the topic's name unless you supply a different one.",
+		Annotations: writeTool(false),
+	}, h.promoteToTree)
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "delete_node",
 		Description: "Delete a topic and everything beneath it, including their tags and prerequisites. This can't be undone; confirm with the user first.",
 		Annotations: writeTool(true),
@@ -464,6 +470,31 @@ func (h *handlers) removePrerequisite(ctx context.Context, req *mcp.CallToolRequ
 	}
 
 	return text(fmt.Sprintf("%s [%s] no longer requires %s [%s]", node.Name, lookup.ShortID(node.ID), required.Name, lookup.ShortID(required.ID))), nil, nil
+}
+
+type promoteToTreeInput struct {
+	Node string `json:"node" jsonschema:"ID of the topic to promote to its own tree"`
+	Name string `json:"name,omitempty" jsonschema:"name for the new tree; defaults to the topic's own name"`
+}
+
+func (h *handlers) promoteToTree(ctx context.Context, req *mcp.CallToolRequest, in promoteToTreeInput) (*mcp.CallToolResult, any, error) {
+	node, err := lookup.Node(h.repos.Nodes, in.Node)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		name = node.Name
+	}
+
+	newTree := domain.NewKnowledgeTree(name)
+
+	if err := h.repos.Nodes.PromoteToTree(node.ID, newTree); err != nil {
+		return nil, nil, err
+	}
+
+	return text(fmt.Sprintf("promoted %s [%s] to its own tree %q [%s]", node.Name, lookup.ShortID(node.ID), newTree.Name, lookup.ShortID(newTree.ID))), nil, nil
 }
 
 type tagInput struct {

@@ -25,6 +25,10 @@ type NodeRepository interface {
 	// parent in the same tree (nil for the top level). It fails if the new
 	// parent is the node itself or one of its descendants.
 	Move(id uuid.UUID, parentID *uuid.UUID, index int) error
+	// PromoteToTree moves the node and its entire subtree into a new knowledge
+	// tree, removing it from its current tree. The new tree record is created
+	// atomically in the same transaction.
+	PromoteToTree(nodeID uuid.UUID, newTree *domain.KnowledgeTree) error
 	Update(node *domain.Node) error
 	// DeleteByID deletes the node and all of its descendants, and closes the
 	// gap among its siblings.

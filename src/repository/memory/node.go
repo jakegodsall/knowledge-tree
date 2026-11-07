@@ -170,6 +170,10 @@ func (r *NodeRepository) Move(id uuid.UUID, parentID *uuid.UUID, index int) erro
 	return nil
 }
 
+func (r *NodeRepository) PromoteToTree(nodeID uuid.UUID, newTree *domain.KnowledgeTree) error {
+	return fmt.Errorf("PromoteToTree not implemented in memory repository")
+}
+
 func (r *NodeRepository) DeleteByID(id uuid.UUID) error {
 	node, err := r.FindByID(id)
 

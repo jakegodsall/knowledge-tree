@@ -352,6 +352,64 @@ func (r *NodeRepository) Move(id uuid.UUID, parentID *uuid.UUID, index int) erro
 	return tx.Commit()
 }
 
+func (r *NodeRepository) PromoteToTree(nodeID uuid.UUID, newTree *domain.KnowledgeTree) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var graphID uuid.UUID
+	var parentID *uuid.UUID
+	var position uint16
+
+	err = tx.QueryRow("SELECT graph_id, parent_id, position FROM nodes WHERE id = ?", nodeID).
+		Scan(&graphID, &parentID, &position)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("no node found for id %s", nodeID)
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(
+		"INSERT INTO knowledge_trees (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+		newTree.ID, newTree.Name, newTree.CreatedAt, newTree.UpdatedAt,
+	)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+
+	_, err = tx.Exec(`
+			WITH RECURSIVE subtree(id) AS (
+				SELECT ?
+				UNION ALL
+				SELECT n.id FROM nodes n JOIN subtree s ON n.parent_id = s.id
+			)
+			UPDATE nodes SET graph_id = ?, updated_at = ?
+			WHERE id IN (SELECT id FROM subtree)
+		`, nodeID, newTree.ID, now)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(
+		"UPDATE nodes SET parent_id = NULL, position = 0, updated_at = ? WHERE id = ?",
+		now, nodeID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := closeGap(tx, graphID, parentID, position, nodeID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func (r *NodeRepository) DeleteByID(id uuid.UUID) error {
 	tx, err := r.db.Begin()
 
