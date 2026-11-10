@@ -27,6 +27,9 @@ trees:
 
 nodes:
   add-node <tree> <name> [--parent <node>]  add a root or child node
+  move-node <node> --index <n> [--parent <node>]
+                                            move a node to position n among its
+                                            siblings; optionally reparent it
   update-node <node> --name <name>          rename a node
   delete-node <node>                        delete a node and its children
   complete <node>                           mark a node complete
@@ -391,6 +394,45 @@ func (a *app) runUpdateNode(args []string) error {
 	}
 
 	fmt.Printf("renamed %s to %s [%s]\n", old, node.Name, shortID(node.ID))
+	return nil
+}
+
+func (a *app) runMoveNode(args []string) error {
+	flags := flag.NewFlagSet("move-node", flag.ContinueOnError)
+	indexArg := flags.Int("index", -1, "0-based position among siblings")
+	parentArg := flags.String("parent", "", "new parent node ID or prefix (omit to keep current)")
+
+	positional, err := parseArgs(flags, args)
+	if err != nil {
+		return err
+	}
+
+	if len(positional) != 1 || *indexArg < 0 {
+		return fmt.Errorf("usage: ktree move-node <node> --index <n> [--parent <node>]")
+	}
+
+	node, err := a.resolveNode(positional[0])
+	if err != nil {
+		return err
+	}
+
+	var parentID *uuid.UUID
+
+	if *parentArg != "" {
+		parent, err := a.resolveNode(*parentArg)
+		if err != nil {
+			return err
+		}
+		parentID = &parent.ID
+	} else {
+		parentID = node.ParentID
+	}
+
+	if err := a.nodes.Move(node.ID, parentID, *indexArg); err != nil {
+		return err
+	}
+
+	fmt.Printf("moved %s [%s] to position %d\n", node.Name, shortID(node.ID), *indexArg)
 	return nil
 }
 

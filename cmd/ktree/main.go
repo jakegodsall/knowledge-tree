@@ -72,6 +72,7 @@ func main() {
 		"delete-tree": a.runDeleteTree,
 		"demote-tree": a.runDemoteTree,
 		"add-node":    a.runAddNode,
+		"move-node":   a.runMoveNode,
 		"update-node": a.runUpdateNode,
 		"delete-node": a.runDeleteNode,
 		"complete":    a.runComplete,
