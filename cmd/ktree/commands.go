@@ -143,12 +143,14 @@ func (a *app) runShow(args []string) error {
 	return a.printNodes(children, start.ID, "", *expandArg)
 }
 
+// subtreeCounts returns how many of a node's descendants are complete, and
+// how many there are. The node itself is not counted.
 func subtreeCounts(children map[uuid.UUID][]*domain.Node, n *domain.Node) (done, total int) {
-	total = 1
-	if n.Status == domain.StatusComplete {
-		done = 1
-	}
 	for _, child := range children[n.ID] {
+		total++
+		if child.Status == domain.StatusComplete {
+			done++
+		}
 		d, t := subtreeCounts(children, child)
 		done += d
 		total += t
@@ -187,12 +189,13 @@ func (a *app) printNodes(children map[uuid.UUID][]*domain.Node, parent uuid.UUID
 			labels.WriteString(tag.Tag)
 		}
 
-		if total != 1 {
+		if total > 0 {
 			fmt.Printf("%s%s%s %s [%s]%s %d/%d complete\n", indent, branch, status, node.Name, shortID(node.ID), labels.String(), done, total)
 		} else {
 			fmt.Printf("%s%s%s %s [%s]%s\n", indent, branch, status, node.Name, shortID(node.ID), labels.String())
 		}
-		if expand || done != total {
+		// collapse a branch only once it and everything beneath it is complete
+		if expand || node.Status != domain.StatusComplete || done != total {
 			if err := a.printNodes(children, node.ID, indent+childIndent, expand); err != nil {
 				return err
 			}
