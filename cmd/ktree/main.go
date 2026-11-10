@@ -70,6 +70,7 @@ func main() {
 		"create":      a.runCreate,
 		"show":        a.runShow,
 		"delete-tree": a.runDeleteTree,
+		"demote-tree": a.runDemoteTree,
 		"add-node":    a.runAddNode,
 		"update-node": a.runUpdateNode,
 		"delete-node": a.runDeleteNode,

@@ -410,6 +410,93 @@ func (r *NodeRepository) PromoteToTree(nodeID uuid.UUID, newTree *domain.Knowled
 	return tx.Commit()
 }
 
+func (r *NodeRepository) DemoteTree(treeID uuid.UUID, node *domain.Node, index int, newTree *domain.KnowledgeTree) error {
+	if node.GraphID == treeID {
+		return fmt.Errorf("a tree can't be demoted into itself")
+	}
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var exists bool
+	if err := tx.QueryRow("SELECT EXISTS (SELECT 1 FROM knowledge_trees WHERE id = ?)", treeID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("no knowledge tree found for id %s", treeID)
+	}
+
+	if newTree != nil {
+		_, err = tx.Exec(
+			"INSERT INTO knowledge_trees (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+			newTree.ID, newTree.Name, newTree.CreatedAt, newTree.UpdatedAt,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	if node.ParentID != nil {
+		var parentGraph uuid.UUID
+		err := tx.QueryRow("SELECT graph_id FROM nodes WHERE id = ?", *node.ParentID).Scan(&parentGraph)
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("no node found for id %s", *node.ParentID)
+		}
+		if err != nil {
+			return err
+		}
+		if parentGraph != node.GraphID {
+			return fmt.Errorf("parent %s is not in tree %s", *node.ParentID, node.GraphID)
+		}
+	}
+
+	positions, err := siblingPositions(tx, node.GraphID, node.ParentID, uuid.Nil)
+	if err != nil {
+		return err
+	}
+
+	node.Position = positionForIndex(positions, index)
+
+	if err := shiftSiblings(tx, node.GraphID, node.ParentID, node.Position, uuid.Nil); err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+			INSERT INTO nodes (id, graph_id, parent_id, name, status, position, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`,
+		node.ID, node.GraphID, parentArg(node.ParentID), node.Name, node.Status, node.Position, node.CreatedAt, node.UpdatedAt,
+	)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+
+	// the old top-level nodes keep their positions, now as node's children
+	_, err = tx.Exec(
+		"UPDATE nodes SET parent_id = ?, updated_at = ? WHERE graph_id = ? AND parent_id IS NULL",
+		node.ID, now, treeID,
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE nodes SET graph_id = ?, updated_at = ? WHERE graph_id = ?", node.GraphID, now, treeID)
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec("DELETE FROM knowledge_trees WHERE id = ?", treeID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func (r *NodeRepository) DeleteByID(id uuid.UUID) error {
 	tx, err := r.db.Begin()
 

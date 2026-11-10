@@ -49,6 +49,14 @@ func (h *handlers) addWriteTools(server *mcp.Server) {
 	}, h.promoteToTree)
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name: "demote_tree",
+		Description: "The reverse of promote_to_tree: turn a whole tree into a topic inside another tree. A new topic named after the tree " +
+			"(or name) is added under parent, or at the top level of into_tree, and the tree's top-level topics become its children. " +
+			"into_tree is created if no tree has that name. The demoted tree is removed; its topics keep their IDs, status, tags and prerequisites.",
+		Annotations: writeTool(false),
+	}, h.demoteTree)
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "delete_node",
 		Description: "Delete a topic and everything beneath it, including their tags and prerequisites. This can't be undone; confirm with the user first.",
 		Annotations: writeTool(true),
@@ -495,6 +503,93 @@ func (h *handlers) promoteToTree(ctx context.Context, req *mcp.CallToolRequest, 
 	}
 
 	return text(fmt.Sprintf("promoted %s [%s] to its own tree %q [%s]", node.Name, lookup.ShortID(node.ID), newTree.Name, lookup.ShortID(newTree.ID))), nil, nil
+}
+
+type demoteTreeInput struct {
+	Tree     string `json:"tree" jsonschema:"name or ID of the tree to demote"`
+	Parent   string `json:"parent,omitempty" jsonschema:"ID of the node to put the tree under"`
+	IntoTree string `json:"into_tree,omitempty" jsonschema:"name or ID of the tree to put it at the top level of; a tree with this name is created if none exists"`
+	Name     string `json:"name,omitempty" jsonschema:"name for the new topic; defaults to the tree's name"`
+	Position *int   `json:"position,omitempty" jsonschema:"0-based slot among the new siblings, 0 being first. Omit to add at the end."`
+}
+
+func (h *handlers) demoteTree(ctx context.Context, req *mcp.CallToolRequest, in demoteTreeInput) (*mcp.CallToolResult, any, error) {
+	if (in.Parent == "") == (in.IntoTree == "") {
+		return nil, nil, fmt.Errorf("give exactly one of parent or into_tree")
+	}
+
+	source, err := lookup.Tree(h.repos.Trees, in.Tree)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		name = source.Name
+	}
+
+	p := &placement{index: math.MaxInt32}
+	var newTree *domain.KnowledgeTree
+
+	if in.Parent != "" {
+		if p.parent, err = lookup.Node(h.repos.Nodes, in.Parent); err != nil {
+			return nil, nil, err
+		}
+		if p.tree, err = h.repos.Trees.FindByID(p.parent.GraphID); err != nil {
+			return nil, nil, err
+		}
+	} else {
+		if p.tree, err = h.findTree(in.IntoTree); err != nil {
+			return nil, nil, err
+		}
+		if p.tree == nil {
+			newTree = domain.NewKnowledgeTree(strings.TrimSpace(in.IntoTree))
+			p.tree = newTree
+		}
+	}
+
+	if p.tree.ID == source.ID {
+		return nil, nil, fmt.Errorf("%s can't be demoted into itself", source.Name)
+	}
+
+	if in.Position != nil {
+		p.index = *in.Position
+	}
+
+	node := domain.NewNode(p.tree.ID, p.parentID(), name, 0)
+
+	if err := h.repos.Nodes.DemoteTree(source.ID, node, p.index, newTree); err != nil {
+		return nil, nil, err
+	}
+
+	verb := fmt.Sprintf("demoted tree %s to", source.Name)
+	if newTree != nil {
+		verb = fmt.Sprintf("created tree %s [%s] and demoted tree %s to", newTree.Name, lookup.ShortID(newTree.ID), source.Name)
+	}
+
+	return h.placed(verb, node, p)
+}
+
+// findTree resolves a tree name or ID, returning nil if no tree has that name.
+func (h *handlers) findTree(arg string) (*domain.KnowledgeTree, error) {
+	arg = strings.TrimSpace(arg)
+
+	if _, err := uuid.Parse(arg); err == nil {
+		return lookup.Tree(h.repos.Trees, arg)
+	}
+
+	trees, err := h.repos.Trees.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, t := range trees {
+		if t.Name == arg {
+			return t, nil
+		}
+	}
+
+	return nil, nil
 }
 
 type tagInput struct {

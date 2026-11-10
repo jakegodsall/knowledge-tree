@@ -174,6 +174,10 @@ func (r *NodeRepository) PromoteToTree(nodeID uuid.UUID, newTree *domain.Knowled
 	return fmt.Errorf("PromoteToTree not implemented in memory repository")
 }
 
+func (r *NodeRepository) DemoteTree(treeID uuid.UUID, node *domain.Node, index int, newTree *domain.KnowledgeTree) error {
+	return fmt.Errorf("DemoteTree not implemented in memory repository")
+}
+
 func (r *NodeRepository) DeleteByID(id uuid.UUID) error {
 	node, err := r.FindByID(id)
 

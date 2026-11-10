@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"jakegodsall/knowledge-tree/src/domain"
 	"jakegodsall/knowledge-tree/src/lookup"
 	"jakegodsall/knowledge-tree/src/repository"
@@ -20,6 +21,9 @@ trees:
   create <name>                          create a tree
   show <tree> [--node <node>]            show a tree's nodes, optionally from a subtree
   delete-tree <tree>                     delete a tree and all its nodes
+  demote-tree <tree> (--parent <node> | --into <tree>) [--name <name>]
+                                         turn a tree into a node of another
+                                         tree; --into creates the tree if needed
 
 nodes:
   add-node <tree> <name> [--parent <node>]  add a root or child node
@@ -221,6 +225,83 @@ func (a *app) runDeleteTree(args []string) error {
 	}
 
 	fmt.Printf("deleted tree %s\n", tree.Name)
+	return nil
+}
+
+func (a *app) runDemoteTree(args []string) error {
+	flags := flag.NewFlagSet("demote-tree", flag.ContinueOnError)
+	parentArg := flags.String("parent", "", "parent node ID or prefix")
+	intoArg := flags.String("into", "", "tree to put it at the top level of")
+	nameArg := flags.String("name", "", "name for the new node; defaults to the tree's name")
+
+	positional, err := parseArgs(flags, args)
+
+	if err != nil {
+		return err
+	}
+
+	if len(positional) != 1 || (*parentArg == "") == (*intoArg == "") {
+		return fmt.Errorf("usage: ktree demote-tree <tree> (--parent <node> | --into <tree>) [--name <name>]")
+	}
+
+	source, err := a.resolveTree(positional[0])
+
+	if err != nil {
+		return err
+	}
+
+	name := strings.TrimSpace(*nameArg)
+
+	if name == "" {
+		name = source.Name
+	}
+
+	var target *domain.KnowledgeTree
+	var newTree *domain.KnowledgeTree
+	var parentID *uuid.UUID
+
+	if *parentArg != "" {
+		parent, err := a.resolveNode(*parentArg)
+
+		if err != nil {
+			return err
+		}
+
+		parentID = &parent.ID
+
+		if target, err = a.trees.FindByID(parent.GraphID); err != nil {
+			return err
+		}
+	} else {
+		trees, err := a.trees.GetAll()
+
+		if err != nil {
+			return err
+		}
+
+		for _, t := range trees {
+			if t.Name == *intoArg || t.ID.String() == *intoArg {
+				target = t
+			}
+		}
+
+		if target == nil {
+			newTree = domain.NewKnowledgeTree(strings.TrimSpace(*intoArg))
+			target = newTree
+		}
+	}
+
+	node := domain.NewNode(target.ID, parentID, name, 0)
+
+	if err := a.nodes.DemoteTree(source.ID, node, math.MaxInt32, newTree); err != nil {
+		return err
+	}
+
+	if newTree != nil {
+		fmt.Printf("created tree %s [%s]\n", newTree.Name, shortID(newTree.ID))
+	}
+
+	fmt.Printf("demoted tree %s to %s [%s] in %s\n", source.Name, node.Name, shortID(node.ID), target.Name)
 	return nil
 }
 

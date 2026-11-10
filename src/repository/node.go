@@ -29,6 +29,12 @@ type NodeRepository interface {
 	// tree, removing it from its current tree. The new tree record is created
 	// atomically in the same transaction.
 	PromoteToTree(nodeID uuid.UUID, newTree *domain.KnowledgeTree) error
+	// DemoteTree is the reverse of PromoteToTree. It inserts node (its
+	// GraphID and ParentID say where) at a 0-based index among its siblings,
+	// moves every node of tree treeID into node's tree with the old top-level
+	// nodes as node's children, and deletes tree treeID. If newTree is not
+	// nil it is created first, in the same transaction, as node's tree.
+	DemoteTree(treeID uuid.UUID, node *domain.Node, index int, newTree *domain.KnowledgeTree) error
 	Update(node *domain.Node) error
 	// DeleteByID deletes the node and all of its descendants, and closes the
 	// gap among its siblings.
