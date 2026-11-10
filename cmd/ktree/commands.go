@@ -177,6 +177,8 @@ func (a *app) printNodes(children map[uuid.UUID][]*domain.Node, parent uuid.UUID
 			return err
 		}
 
+		done, total := subtreeCounts(children, node)
+
 		var labels strings.Builder
 
 		for _, tag := range tags {
@@ -184,7 +186,12 @@ func (a *app) printNodes(children map[uuid.UUID][]*domain.Node, parent uuid.UUID
 			labels.WriteString(tag.Tag)
 		}
 
-		fmt.Printf("%s%s%s %s [%s]%s\n", indent, branch, status, node.Name, shortID(node.ID), labels.String())
+		if total != 1 {
+			fmt.Printf("%s%s%s %s [%s]%s %d/%d complete\n", indent, branch, status, node.Name, shortID(node.ID), labels.String(), done, total)
+		} else {
+			fmt.Printf("%s%s%s %s [%s]%s\n", indent, branch, status, node.Name, shortID(node.ID), labels.String())
+		}
+
 
 		if err := a.printNodes(children, node.ID, indent+childIndent); err != nil {
 			return err
