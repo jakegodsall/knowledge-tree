@@ -191,10 +191,10 @@ func (a *app) printNodes(children map[uuid.UUID][]*domain.Node, parent uuid.UUID
 		} else {
 			fmt.Printf("%s%s%s %s [%s]%s\n", indent, branch, status, node.Name, shortID(node.ID), labels.String())
 		}
-
-
-		if err := a.printNodes(children, node.ID, indent+childIndent); err != nil {
-			return err
+		if done != total {
+			if err := a.printNodes(children, node.ID, indent+childIndent); err != nil {
+				return err
+			}
 		}
 	}
 
