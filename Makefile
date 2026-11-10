@@ -4,6 +4,7 @@ BINARY := ktree
 .PHONY: install build clean
 
 install: build
+	rm -f $(INSTALL_DIR)/$(BINARY)
 	cp bin/$(BINARY) $(INSTALL_DIR)/$(BINARY)
 
 build:
