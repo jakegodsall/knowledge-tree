@@ -80,6 +80,7 @@ func (a *app) runCreate(args []string) error {
 func (a *app) runShow(args []string) error {
 	flags := flag.NewFlagSet("show", flag.ContinueOnError)
 	nodeArg := flags.String("node", "", "node ID or prefix to start from")
+	expandArg := flags.Bool("expand", false, "expand completed nodes")
 
 	positional, err := parseArgs(flags, args)
 	if err != nil {
@@ -130,7 +131,7 @@ func (a *app) runShow(args []string) error {
 			}
 		}
 		fmt.Printf("%s [%s]  %d/%d complete\n", tree.Name, shortID(tree.ID), completed, len(nodes))
-		return a.printNodes(children, uuid.Nil, "")
+		return a.printNodes(children, uuid.Nil, "", *expandArg)
 	}
 
 	done, total := subtreeCounts(children, start)
@@ -139,7 +140,7 @@ func (a *app) runShow(args []string) error {
 		status = "✓"
 	}
 	fmt.Printf("%s %s [%s]  %d/%d complete\n", status, start.Name, shortID(start.ID), done, total)
-	return a.printNodes(children, start.ID, "")
+	return a.printNodes(children, start.ID, "", *expandArg)
 }
 
 func subtreeCounts(children map[uuid.UUID][]*domain.Node, n *domain.Node) (done, total int) {
@@ -155,7 +156,7 @@ func subtreeCounts(children map[uuid.UUID][]*domain.Node, n *domain.Node) (done,
 	return
 }
 
-func (a *app) printNodes(children map[uuid.UUID][]*domain.Node, parent uuid.UUID, indent string) error {
+func (a *app) printNodes(children map[uuid.UUID][]*domain.Node, parent uuid.UUID, indent string, expand bool) error {
 	siblings := children[parent]
 
 	for i, node := range siblings {
@@ -191,8 +192,8 @@ func (a *app) printNodes(children map[uuid.UUID][]*domain.Node, parent uuid.UUID
 		} else {
 			fmt.Printf("%s%s%s %s [%s]%s\n", indent, branch, status, node.Name, shortID(node.ID), labels.String())
 		}
-		if done != total {
-			if err := a.printNodes(children, node.ID, indent+childIndent); err != nil {
+		if expand || done != total {
+			if err := a.printNodes(children, node.ID, indent+childIndent, expand); err != nil {
 				return err
 			}
 		}
