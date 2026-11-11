@@ -8,7 +8,6 @@ import (
 	"jakegodsall/knowledge-tree/src/domain"
 	"jakegodsall/knowledge-tree/src/lookup"
 	"jakegodsall/knowledge-tree/src/repository"
-	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -52,15 +51,11 @@ type app struct {
 }
 
 func (a *app) runList(args []string) error {
-	trees, err := a.trees.GetAll()
+	trees, err := a.trees.GetAllSorted()
 
 	if err != nil {
 		return err
 	}
-
-	slices.SortFunc(trees, func (a, b *domain.KnowledgeTree) int {
-		return strings.Compare(a.Name, b.Name)
-	})
 
 	for _, tree := range trees {
 		fmt.Printf("%s  %s\n", shortID(tree.ID), tree.Name)

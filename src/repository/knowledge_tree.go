@@ -8,6 +8,7 @@ import (
 
 type KnowledgeTreeRepository interface {
 	GetAll() ([]*domain.KnowledgeTree, error)
+	GetAllSorted() ([]*domain.KnowledgeTree, error)
 	Create(tree *domain.KnowledgeTree) error
 	FindByID(id uuid.UUID) (*domain.KnowledgeTree, error)
 	FindByName(name string) (*domain.KnowledgeTree, error)
